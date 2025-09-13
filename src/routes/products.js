@@ -1,11 +1,8 @@
 import express from 'express';
 import Product from '../models/Product.js';
 import { auth, admin } from '../middleware/auth.js';
-import { upload } from '../utils/s3.js';
 import { uploadFields } from '../utils/multerConfig.js';
 import googleDriveService from '../services/googleDrive.js';
-import fs from 'fs';
-import path from 'path';
 
 const router = express.Router();
 
@@ -52,9 +49,19 @@ router.post('/', auth, admin, uploadFields, async (req, res) => {
     // Gérer l'image
     if (req.files?.image?.[0]) {
       const imageFile = req.files.image[0];
-      const imagePath = path.join('uploads/images', `${Date.now()}-${imageFile.originalname}`);
-      fs.writeFileSync(imagePath, imageFile.buffer);
-      productData.image = `/${imagePath}`;
+      try {
+        const { Readable } = await import('stream');
+        const stream = Readable.from(imageFile.buffer);
+        const driveResult = await googleDriveService.uploadPublicFile(
+          stream,
+          imageFile.originalname,
+          imageFile.mimetype
+        );
+        // Correction pour obtenir une URL directe de l'image
+        productData.image = driveResult.webViewLink.replace("view", "preview");
+      } catch (driveError) {
+        throw new Error(`Erreur upload image: ${driveError.message}`);
+      }
     } else {
       productData.image = 'https://via.placeholder.com/300x200';
     }
@@ -63,14 +70,13 @@ router.post('/', auth, admin, uploadFields, async (req, res) => {
     if (req.files?.productFile?.[0]) {
       const productFile = req.files.productFile[0];
       
-      // Sauvegarder temporairement le fichier
-      const tempPath = path.join('uploads/products', `temp-${Date.now()}-${productFile.originalname}`);
-      fs.writeFileSync(tempPath, productFile.buffer);
-      
       try {
-        // Uploader vers Google Drive
+        // Uploader vers Google Drive directement depuis le buffer
+        const { Readable } = await import('stream');
+        const stream = Readable.from(productFile.buffer);
+
         const driveResult = await googleDriveService.uploadFile(
-          fs.createReadStream(tempPath),
+          stream,
           productFile.originalname,
           productFile.mimetype
         );
@@ -78,13 +84,7 @@ router.post('/', auth, admin, uploadFields, async (req, res) => {
         productData.fileId = driveResult.fileId;
         productData.fileName = driveResult.name;
         
-        // Supprimer le fichier temporaire
-        fs.unlinkSync(tempPath);
       } catch (driveError) {
-        // Supprimer le fichier temporaire en cas d'erreur
-        if (fs.existsSync(tempPath)) {
-          fs.unlinkSync(tempPath);
-        }
         throw new Error(`Erreur upload Google Drive: ${driveError.message}`);
       }
     }
@@ -97,18 +97,32 @@ router.post('/', auth, admin, uploadFields, async (req, res) => {
   }
 });
 
-router.put('/:id', auth, admin, upload.single('image'), async (req, res) => {
+router.put('/:id', auth, admin, uploadFields, async (req, res) => {
   try {
     const updateData = { ...req.body };
-    if (req.file) {
-      updateData.image = `/uploads/${req.file.filename}`;
+    
+    // Gérer la nouvelle image si elle est fournie
+    if (req.files?.image?.[0]) {
+      const imageFile = req.files.image[0];
+      try {
+        const { Readable } = await import('stream');
+        const stream = Readable.from(imageFile.buffer);
+        const driveResult = await googleDriveService.uploadPublicFile(
+          stream,
+          imageFile.originalname,
+          imageFile.mimetype
+        );
+        updateData.image = driveResult.webViewLink.replace("view", "preview");
+      } catch (driveError) {
+        throw new Error(`Erreur upload image: ${driveError.message}`);
+      }
     }
     
     const product = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.json(product);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
 

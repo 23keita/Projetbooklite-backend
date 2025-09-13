@@ -141,6 +141,44 @@ class GoogleDriveService {
   }
 
   /**
+   * Upload un fichier et le rend public
+   */
+  async uploadPublicFile(fileStream, fileName, mimeType) {
+    try {
+      const fileMetadata = {
+        name: fileName,
+        parents: [this.folderID],
+      };
+
+      const media = {
+        mimeType,
+        body: fileStream,
+      };
+
+      const file = await this.drive.files.create({
+        resource: fileMetadata,
+        media,
+        fields: 'id, webViewLink',
+      });
+
+      await this.drive.permissions.create({
+        fileId: file.data.id,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone',
+        },
+      });
+
+      return {
+        fileId: file.data.id,
+        webViewLink: file.data.webViewLink,
+      };
+    } catch (error) {
+      throw new Error(`Erreur upload public: ${error.message}`);
+    }
+  }
+
+  /**
    * Génère un lien de téléchargement signé et temporaire
    */
   async generateSignedDownloadLink(fileId, expiryDays, maxDownloads) {
