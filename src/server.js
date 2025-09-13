@@ -7,7 +7,7 @@ dotenv.config();
 const PORT = process.env.PORT || 5000;
 
 // Connexion MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/booklite')
+mongoose.connect(process.env.MONGODB_URI || '')
   .then(() => console.log('MongoDB connecté'))
   .catch(err => console.error('Erreur MongoDB:', err));
 
