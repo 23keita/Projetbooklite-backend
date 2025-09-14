@@ -148,7 +148,7 @@ router.post('/:id/files', auth, admin, async (req, res) => {
       return res.status(400).json({ message: 'fileIds requis' });
     }
 
-    const { default: File } = await import('../models/File.js');
+    const { default: File } = await import('../models/File1.js');
     const { default: DownloadLink } = await import('../models/DownloadLink.js');
 
     const filesMeta = [];

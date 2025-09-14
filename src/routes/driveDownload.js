@@ -74,7 +74,7 @@ router.get('/download/:token', async (req, res) => {
     if (link.downloadCount >= link.maxDownloads) return res.status(429).json({ success: false, message: 'Limite de téléchargements atteinte' });
 
     // Trouver le fichier côté backend (Mongo -> chemin local)
-    const { default: File } = await import('../models/File.js');
+    const { default: File } = await import('../models/File1.js');
     const pathMod = await import('path');
     const fs = await import('fs');
 
