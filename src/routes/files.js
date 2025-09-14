@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { auth, admin } from '../middleware/auth.js';
-import File from '../models/File.js';
+import File from '../models/File1.js';
 
 const router = express.Router();
 
