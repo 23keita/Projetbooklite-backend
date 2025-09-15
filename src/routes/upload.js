@@ -1,16 +1,9 @@
 import express from "express";
 import multer from "multer";
-import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
+import cloudinary from "./cloudinary.js"; // Importer la configuration centralisée
 
 const router = express.Router();
-
-// Configuration Cloudinary
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "dqhccyret",
-    api_key: process.env.CLOUDINARY_API_KEY || "623876353234692",
-    api_secret: process.env.CLOUDINARY_API_SECRET || "<your_api_secret>",
-});
 
 // Multer + Cloudinary storage
 const storage = new CloudinaryStorage({
@@ -26,11 +19,14 @@ const parser = multer({ storage });
 // POST /upload pour recevoir l'image du frontend
 router.post("/", parser.single("image"), async (req, res) => {
     try {
+        if (!req.file) {
+            return res.status(400).json({ error: "Aucun fichier reçu. L'upload a échoué." });
+        }
         // req.file.path contient l'URL Cloudinary
         res.json({ url: req.file.path });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Upload failed" });
+        res.status(500).json({ error: "L'upload a échoué" });
     }
 });
 

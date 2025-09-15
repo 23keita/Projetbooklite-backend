@@ -12,10 +12,13 @@ router.get('/', async (req, res) => {
     const query = { isActive: true };
     
     if (category) query.category = category;
+
     if (search) {
+      // Sécurité : Échapper les caractères spéciaux pour prévenir les attaques ReDoS
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { author: { $regex: search, $options: 'i' } }
+        { title: { $regex: escapedSearch, $options: 'i' } },
+        { author: { $regex: escapedSearch, $options: 'i' } }
       ];
     }
 

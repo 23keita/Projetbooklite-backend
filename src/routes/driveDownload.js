@@ -72,39 +72,56 @@ router.get('/download/:token', async (req, res) => {
     if (link.revoked) return res.status(403).json({ success: false, message: 'Lien révoqué' });
     if (new Date() > new Date(link.expiresAt)) return res.status(410).json({ success: false, message: 'Lien expiré' });
     if (link.downloadCount >= link.maxDownloads) return res.status(429).json({ success: false, message: 'Limite de téléchargements atteinte' });
-
-    // Trouver le fichier côté backend (Mongo -> chemin local)
-    const { default: File } = await import('../models/File1.js');
-    const pathMod = await import('path');
-    const fs = await import('fs');
-
-    const fileDoc = await File.findOne({ fileId: link.fileId });
-    if (!fileDoc) {
-      return res.status(404).json({ success: false, message: `Fichier introuvable pour fileId=${link.fileId}` });
-    }
-
-    const uploadsRoot = pathMod.resolve(process.cwd(), 'uploads');
-    const absolutePath = pathMod.isAbsolute(fileDoc.path)
-      ? fileDoc.path
-      : pathMod.resolve(uploadsRoot, fileDoc.path);
-
-    // Sécurité: s'assurer que le fichier est bien sous uploads/
-    const normalized = pathMod.resolve(absolutePath);
-    if (!normalized.startsWith(uploadsRoot)) {
-      return res.status(400).json({ success: false, message: 'Chemin de fichier non autorisé' });
-    }
-
-    if (!fs.existsSync(normalized)) {
-      return res.status(404).json({ success: false, message: 'Fichier manquant sur le serveur' });
-    }
-
+    
     // Incrémente le compteur avant envoi
     link.downloadCount += 1;
     await link.save();
-
-    const filename = link.fileName || fileDoc.name || 'download.bin';
-    return res.download(normalized, filename);
+    
+    // --- Logique unifiée pour servir un fichier local OU un fichier Google Drive ---
+    
+    // Étape 1: Essayer de trouver un fichier local correspondant
+    const { default: File } = await import('../models/File1.js');
+    const fileDoc = await File.findOne({ fileId: link.fileId });
+    
+    if (fileDoc) {
+      // C'est un fichier local, on le sert directement
+      const pathMod = await import('path');
+      const fs = await import('fs');
+      const uploadsRoot = pathMod.resolve(process.cwd(), 'uploads');
+      const absolutePath = pathMod.isAbsolute(fileDoc.path)
+        ? fileDoc.path
+        : pathMod.resolve(uploadsRoot, fileDoc.path);
+      
+      // Sécurité: s'assurer que le fichier est bien sous uploads/
+      const normalized = pathMod.resolve(absolutePath);
+      if (!normalized.startsWith(uploadsRoot)) {
+        return res.status(400).json({ success: false, message: 'Chemin de fichier non autorisé' });
+      }
+      if (!fs.existsSync(normalized)) {
+        return res.status(404).json({ success: false, message: 'Fichier manquant sur le serveur' });
+      }
+      
+      const filename = link.fileName || fileDoc.name || 'download.bin';
+      return res.download(normalized, filename);
+    } else {
+      // C'est probablement un fichier Google Drive, on le streame
+      const filename = link.fileName || 'download.bin';
+      
+      // Indiquer au navigateur que c'est un fichier à télécharger
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      const driveStream = await googleDriveService.drive.files.get(
+        { fileId: link.fileId, alt: 'media' },
+        { responseType: 'stream' }
+      );
+      
+      // Streamer le fichier de Google Drive vers le client
+      driveStream.data.pipe(res);
+    }
   } catch (error) {
+    if (error.response && error.response.status === 404) {
+      return res.status(404).json({ success: false, message: `Fichier introuvable sur le serveur ou sur Google Drive pour fileId=${req.params.token}` });
+    }
     return res.status(400).json({ success: false, message: error.message });
   }
 });
