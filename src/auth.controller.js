@@ -336,3 +336,44 @@ export const deleteAccount = async (req, res) => {
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
+
+export const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Le mot de passe actuel et le nouveau mot de passe sont requis.' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: 'Le nouveau mot de passe doit contenir au moins 6 caractères.' });
+  }
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+    }
+
+    // Vérifier le mot de passe actuel
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Le mot de passe actuel est incorrect.' });
+    }
+
+    // Hacher et sauvegarder le nouveau mot de passe
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    
+    // Optionnel mais recommandé : Invalider les sessions de rafraîchissement sur les autres appareils
+    user.refreshToken = undefined;
+
+    await user.save();
+
+    res.json({ message: 'Mot de passe mis à jour avec succès.' });
+
+  } catch (error) {
+    console.error('Erreur changePassword:', error);
+    res.status(500).json({ message: 'Erreur serveur lors du changement de mot de passe.' });
+  }
+};

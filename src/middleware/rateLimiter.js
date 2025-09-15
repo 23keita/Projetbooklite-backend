@@ -1,10 +1,10 @@
 import rateLimit from 'express-rate-limit';
 
 /**
- * Limiteur pour les actions d'authentification sensibles (connexion, oubli/réinitialisation de mdp).
+ * Limiteur pour les routes d'API sensibles (connexion, etc.) pour prévenir les abus.
  * Bloque une IP après un certain nombre de tentatives pour prévenir les attaques par force brute.
  */
-export const authLimiter = rateLimit({
+export const apiLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 minutes
 	max: 10, // Limite chaque IP à 10 requêtes par fenêtre de 15 minutes
 	message: {

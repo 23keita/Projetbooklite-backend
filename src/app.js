@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
 // Import routes
@@ -16,8 +17,6 @@ import filesRoutes from './routes/files.js'; // Handles local file uploads
 import contactRoutes from './routes/contact.routes.js';
 import clientUserRoutes from './routes/user.js'; // Handles user-specific actions like password change
 import uploadRouter from "./routes/upload.js"; // <-- ton fichier de route
-// Dans app.js (ou votre fichier serveur principal)
-import { apiLimiter } from './middleware/rateLimiter.js';
 dotenv.config();
 
 // Check for JWT secrets
@@ -39,6 +38,9 @@ const app = express();
 // --- Security Middlewares ---
 
 const isProduction = process.env.NODE_ENV === 'production';
+
+// --- Performance Middleware ---
+app.use(compression()); // Activer la compression Gzip pour toutes les réponses
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -87,8 +89,7 @@ app.use(cookieParser());
 app.use('/uploads', express.static('uploads'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-// Appliquer le limiteur à toutes les routes /api
-app.use('/api', apiLimiter);
+
 // --- API Routes ---
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
