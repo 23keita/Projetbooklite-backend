@@ -4,14 +4,16 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 // Import routes
-import authRoutes from './routes/auth.routes.js';
-import productRoutes from './routes/products.js';
-import orderRoutes from './routes/orders.js';
-import userRoutes from './routes/user.routes.js';
-import dashboardRoutes from './routes/dashboard.js';
-import driveDownloadRoutes from './routes/driveDownload.js';
-import filesRoutes from './routes/files.js';
-import contactRoutes from './routes/contact.routes.js';
+import authRoutes from './routes/auth.routes.js'; // Handles login, register, profile updates
+import productRoutes from './routes/products.js'; // Handles products
+import orderRoutes from './routes/orders.js'; // Handles orders
+import adminUserRoutes from './routes/user.routes.js'; // Handles user management by admins
+import dashboardRoutes from './routes/dashboard.js'; // Handles dashboard stats
+import driveDownloadRoutes from './routes/driveDownload.js'; // Handles secure file downloads
+import filesRoutes from './routes/files.js'; // Handles local file uploads
+import contactRoutes from './routes/contact.routes.js'; // Handles contact form
+import clientUserRoutes from './routes/user.js'; // Handles user-specific actions like password change
+import uploadRouter from "./routes/upload.js"; // <-- ton fichier de route
 
 dotenv.config();
 
@@ -81,12 +83,13 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api/users', adminUserRoutes); // Routes for admins to manage users
+app.use('/api/users', clientUserRoutes); // Routes for users to manage their own account (e.g., change password)
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api', driveDownloadRoutes);
 app.use('/api/local-files', filesRoutes);
 app.use('/api/contact', contactRoutes);
-
+app.use("/upload", uploadRouter);
 // Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);

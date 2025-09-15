@@ -1,9 +1,12 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import User from './models/User.js';
 import TokenBlocklist from './models/TokenBlocklist.js';
+import PasswordResetToken from './models/PasswordResetToken.js';
+import { sendEmail } from './services/emailService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
@@ -52,6 +55,121 @@ export const login = async (req, res) => {
   } catch (error) {
     console.error('Erreur login:', error);
     res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    // Toujours renvoyer une réponse positive pour éviter l'énumération d'e-mails
+    if (!user) {
+      console.log(`Password reset requested for non-existent user: ${email}`);
+      return res.json({ message: 'Si un compte avec cet email existe, un lien de réinitialisation a été envoyé.' });
+    }
+
+    // Invalider les jetons précédents pour cet utilisateur
+    await PasswordResetToken.deleteMany({ userId: user._id });
+
+    // Créer un nouveau jeton de réinitialisation
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    
+    await new PasswordResetToken({
+      userId: user._id,
+      token: resetToken,
+    }).save();
+
+    // Construire l'URL de réinitialisation
+    // Assurez-vous d'avoir FRONTEND_URL dans votre .env
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+
+    // --- Envoi du vrai e-mail à l'utilisateur ---
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Réinitialisation de votre mot de passe Booklite',
+        html: `
+          <h1>Réinitialisation de mot de passe</h1>
+          <p>Bonjour ${user.name},</p>
+          <p>Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le lien ci-dessous pour continuer :</p>
+          <a href="${resetUrl}" style="background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Réinitialiser mon mot de passe</a>
+          <p>Ce lien expirera dans une heure.</p>
+          <p>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail.</p>
+        `,
+      });
+    } catch (emailError) {
+        console.error("Échec de l'envoi de l'e-mail de réinitialisation :", emailError);
+        // Ne pas bloquer l'utilisateur si l'e-mail échoue, mais enregistrer l'erreur.
+    }
+
+    // --- Envoi de la notification à l'admin ---
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail) {
+      try {
+        await sendEmail({
+          to: adminEmail,
+          subject: '[Booklite Admin] Demande de réinitialisation de mot de passe',
+          html: `<p>L'utilisateur <b>${user.name}</b> (${user.email}) a demandé une réinitialisation de mot de passe.</p>`,
+        });
+      } catch (adminEmailError) {
+        console.error("Échec de l'envoi de l'e-mail de notification à l'admin :", adminEmailError);
+      }
+    }
+
+    res.json({ message: 'Si un compte avec cet email existe, un lien de réinitialisation a été envoyé.' });
+
+  } catch (error) {
+    console.error('Erreur forgotPassword:', error);
+    // Ne pas révéler les erreurs internes au client dans ce flux
+    res.status(500).json({ message: 'Une erreur est survenue. Veuillez réessayer.' });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ message: 'Le jeton et le nouveau mot de passe sont requis.' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères.' });
+  }
+
+  try {
+    // Trouver le jeton dans la base de données
+    const resetTokenDoc = await PasswordResetToken.findOne({ token });
+
+    if (!resetTokenDoc) {
+      // Le jeton est invalide ou a expiré (géré par l'index TTL)
+      return res.status(400).json({ message: 'Jeton invalide ou expiré. Veuillez refaire une demande.' });
+    }
+
+    // Trouver l'utilisateur associé
+    const user = await User.findById(resetTokenDoc.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur associé à ce jeton introuvable.' });
+    }
+
+    // Hacher le nouveau mot de passe
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    
+    // Invalider le token de rafraîchissement pour forcer une nouvelle connexion
+    user.refreshToken = undefined;
+
+    await user.save();
+
+    // Supprimer le jeton de réinitialisation pour qu'il ne soit pas réutilisé
+    await resetTokenDoc.deleteOne();
+
+    res.json({ message: 'Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.' });
+
+  } catch (error) {
+    console.error('Erreur resetPassword:', error);
+    res.status(500).json({ message: 'Erreur du serveur lors de la réinitialisation du mot de passe.' });
   }
 };
 

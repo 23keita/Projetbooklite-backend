@@ -5,25 +5,25 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 const router = express.Router();
 
-// Config Cloudinary
+// Configuration Cloudinary
 cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "dqhccyret",
+    api_key: process.env.CLOUDINARY_API_KEY || "623876353234692",
+    api_secret: process.env.CLOUDINARY_API_SECRET || "<your_api_secret>",
 });
 
-// Config Multer pour Cloudinary
+// Multer + Cloudinary storage
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: "products", // dossier Cloudinary
+        folder: "products", // dossier pour les produits
         allowed_formats: ["jpg", "png", "jpeg", "gif"],
     },
 });
 
 const parser = multer({ storage });
 
-// Route POST /upload
+// POST /upload pour recevoir l'image du frontend
 router.post("/", parser.single("image"), async (req, res) => {
     try {
         // req.file.path contient l'URL Cloudinary
