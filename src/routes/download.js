@@ -1,50 +1,51 @@
-import express from 'express';
-import Product from '../models/Product.js';
+import express from "express";
+import multer from "multer";
+import cloudinary from "../config/cloudinary.js";
+import File from "../models/File.js";
+import Product from "../models/Product.js";
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() }); // stocke temporairement en mémoire
 
-// Route de téléchargement
-router.get('/:productId/download/:fileId?', async (req, res) => {
+router.post("/upload/:productId", upload.single("file"), async (req, res) => {
     try {
-        const { productId, fileId } = req.params;
+        const { productId } = req.params;
+        const fileBuffer = req.file.buffer;
+        const fileName = req.file.originalname;
 
-        // Vérifier que le produit existe
-        const productDoc = await Product.findById(productId);
-        if (!productDoc) {
-            return res.status(404).json({ success: false, message: 'Produit non trouvé' });
-        }
+        // Upload sur Cloudinary
+        const result = await cloudinary.uploader.upload_stream(
+            { resource_type: "raw", public_id: fileName },
+            async (error, result) => {
+                if (error) {
+                    console.error(error);
+                    return res.status(500).json({ success: false, message: "Upload failed" });
+                }
 
-        let file;
+                // Créer un document File
+                const file = new File({
+                    fileId: result.public_id,
+                    fileName,
+                    cloudinaryUrl: result.secure_url,
+                });
+                await file.save();
 
-        if (fileId) {
-            // Si un fileId est fourni → chercher dans le tableau files[]
-            file = productDoc.files.find(f => f.fileId === fileId);
-            if (!file) {
-                return res.status(404).json({ success: false, message: 'Fichier introuvable pour ce produit' });
+                // Associer au produit
+                const product = await Product.findById(productId);
+                if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+
+                product.fileId = file.fileId;
+                await product.save();
+
+                res.json({ success: true, file });
             }
-        } else if (productDoc.fileId) {
-            // Compatibilité legacy → utiliser le champ fileId
-            file = {
-                fileId: productDoc.fileId,
-                fileName: productDoc.fileName || 'fichier.zip',
-            };
-        } else {
-            return res.status(400).json({ success: false, message: 'Aucun fichier associé à ce produit' });
-        }
+        );
 
-        // Générer une URL de téléchargement (ex : ton domaine ou Google Drive)
-        const downloadUrl = `https://drive.google.com/uc?export=download&id=${file.fileId}`;
-
-        res.json({
-            success: true,
-            product: productDoc.title,
-            file: file.fileName,
-            downloadUrl,
-        });
-
-    } catch (error) {
-        console.error('Erreur téléchargement fichier:', error);
-        res.status(500).json({ success: false, message: 'Erreur serveur' });
+        // Écrire le buffer dans le stream
+        result.end(fileBuffer);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Server error" });
     }
 });
 
