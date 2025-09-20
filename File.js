@@ -1,10 +1,20 @@
-import mongoose from "mongoose";
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import multer from 'multer';
 
-const fileSchema = new mongoose.Schema({
-    fileId: { type: String, required: true, unique: true },
-    fileName: { type: String, required: true },
-    cloudinaryUrl: { type: String, required: true }, // URL directe Cloudinary
-    createdAt: { type: Date, default: Date.now },
+cloudinary.config({
+    cloud_name: process.env.CLOUD_NAME,
+    api_key: process.env.CLOUD_API_KEY,
+    api_secret: process.env.CLOUD_API_SECRET,
 });
 
-export default mongoose.model("File", fileSchema);
+export const storage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+        folder: 'booklite_uploads', // Dossier sur Cloudinary
+        allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'zip', 'mp4', 'mov'],
+    },
+});
+
+export const upload = multer({ storage });
+export { cloudinary };
