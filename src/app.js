@@ -21,6 +21,7 @@ import clientUserRoutes from './routes/user.js'; // Handles user-specific action
 import uploadRouter from "./routes/upload.js";
 import webhookRoutes from './routes/webhooks.js';
 import downloadRoutes from './routes/download.js';
+import testAuthRoutes from './routes/test-auth.js';
 dotenv.config();
 
 // Check for JWT secrets
@@ -115,6 +116,7 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/upload', uploadRouter);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/orders', downloadRoutes);
+app.use('/api/test', testAuthRoutes);
 
 // Lightweight version endpoint for smooth client updates
 const BOOT_TIME = new Date().toISOString();
