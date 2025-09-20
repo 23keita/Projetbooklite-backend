@@ -6,17 +6,19 @@ const productSchema = new mongoose.Schema({
   description: { type: String, required: true },
   price: { type: Number, required: true },
   category: { type: String, required: true },
-    image: { type: String, required: true },
+  image: { type: String, required: true },
   // Compatibilité: ancien champ single-file
   fileId: { type: String }, // ID du fichier Google Drive (legacy)
   fileName: { type: String }, // Nom du fichier original (legacy)
-  // Nouveau: support des packs (plusieurs fichiers)
+  // Nouveau: support des packs (plusieurs fichiers Cloudinary)
   files: [
     {
-      fileId: { type: String, required: true },
+      url: { type: String, required: true }, // URL Cloudinary
+      publicId: { type: String, required: true }, // Public ID Cloudinary
       fileName: { type: String },
-      mimeType: { type: String },
-      size: { type: String },
+      originalName: { type: String },
+      format: { type: String },
+      size: { type: Number },
       addedAt: { type: Date, default: Date.now },
     }
   ],

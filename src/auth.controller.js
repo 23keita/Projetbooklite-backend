@@ -7,6 +7,7 @@ import User from './models/User.js';
 import TokenBlocklist from './models/TokenBlocklist.js';
 import PasswordResetToken from './models/PasswordResetToken.js';
 import { sendEmail } from './services/emailService.js';
+import passport from './config/passport.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
@@ -179,7 +180,10 @@ export const register = async (req, res) => {
   try {
     let user = await User.findOne({ email });
     if (user) {
-      return res.status(409).json({ message: 'Un utilisateur avec cet email existe déjà.' });
+      return res.status(409).json({ 
+        message: 'Un compte existe déjà avec cette adresse email. Voulez-vous vous connecter à la place ?',
+        code: 'EMAIL_EXISTS'
+      });
     }
 
     user = new User({
@@ -375,5 +379,37 @@ export const changePassword = async (req, res) => {
   } catch (error) {
     console.error('Erreur changePassword:', error);
     res.status(500).json({ message: 'Erreur serveur lors du changement de mot de passe.' });
+  }
+};
+
+// Google OAuth
+export const googleAuth = (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(400).json({ message: 'Google OAuth non configuré' });
+  }
+  return passport.authenticate('google', {
+    scope: ['profile', 'email']
+  })(req, res);
+};
+
+export const googleCallback = async (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    return res.redirect(`${frontendUrl}/login?error=google_not_configured`);
+  }
+  
+  try {
+    const user = req.user;
+    const { accessToken, refreshToken } = generateTokens(user);
+    
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
+  } catch (error) {
+    console.error('Erreur Google callback:', error);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
   }
 };

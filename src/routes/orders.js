@@ -1,5 +1,5 @@
 import express from 'express';
-import { auth, admin } from '../middleware/auth.js';
+import auth, { admin } from '../middleware/auth.js';
 import {
   createOrder,
   getMyOrders,
@@ -18,6 +18,7 @@ const router = express.Router();
 // --- Routes pour les utilisateurs authentifiés ---
 router.post('/', auth, createOrder);
 router.get('/', auth, getMyOrders); // Le frontend appelle GET /api/orders pour les commandes de l'utilisateur
+router.get('/user', auth, getMyOrders); // Route explicite pour les commandes utilisateur
 router.get('/:id', auth, getOrderById);
 router.post('/:id/payment', auth, createPaymentIntent);
 router.get('/:id/download/:productId', auth, getDownloadLinkForProduct);

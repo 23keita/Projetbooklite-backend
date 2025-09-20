@@ -1,5 +1,5 @@
 import express from 'express';
-import { auth, admin } from '../middleware/auth.js';
+import auth, { admin } from '../middleware/auth.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';

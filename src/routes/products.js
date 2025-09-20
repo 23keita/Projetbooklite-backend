@@ -1,6 +1,6 @@
 import express from 'express';
 import Product from '../models/Product.js';
-import { auth, admin } from '../middleware/auth.js';
+import auth, { admin } from '../middleware/auth.js';
 import { uploadFields } from '../utils/multerConfig.js';
 import googleDriveService from '../services/googleDrive.js';
 

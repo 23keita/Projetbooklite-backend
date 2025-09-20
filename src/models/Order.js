@@ -8,7 +8,9 @@ const orderSchema = new mongoose.Schema({
     price: { type: Number, required: true }
   }],
   totalAmount: { type: Number, required: true },
-  status: { type: String, enum: ['pending', 'paid', 'shipped', 'delivered', 'cancelled'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
+  isPaid: { type: Boolean, default: false },
+  orderNumber: { type: String, unique: true },
   
   shippingAddress: {
     street: String,
@@ -17,5 +19,13 @@ const orderSchema = new mongoose.Schema({
     country: String
   }
 }, { timestamps: true });
+
+// Générer un numéro de commande unique avant la sauvegarde
+orderSchema.pre('save', function(next) {
+  if (!this.orderNumber) {
+    this.orderNumber = 'ORD-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+  }
+  next();
+});
 
 export default mongoose.model('Order', orderSchema);

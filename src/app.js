@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import compression from 'compression';
+import session from 'express-session';
+import passport from './config/passport.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 // Import routes
@@ -16,7 +18,9 @@ import driveDownloadRoutes from './routes/driveDownload.js'; // Handles secure f
 import filesRoutes from './routes/files.js'; // Handles local file uploads
 import contactRoutes from './routes/contact.routes.js';
 import clientUserRoutes from './routes/user.js'; // Handles user-specific actions like password change
-import uploadRouter from "./routes/upload.js"; // <-- ton fichier de route
+import uploadRouter from "./routes/upload.js";
+import webhookRoutes from './routes/webhooks.js';
+import downloadRoutes from './routes/download.js';
 dotenv.config();
 
 // Check for JWT secrets
@@ -86,6 +90,14 @@ app.use(cors({
 }));
 
 app.use(cookieParser());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
+app.use(passport.initialize());
+app.use(passport.session());
 app.use('/uploads', express.static('uploads'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -100,7 +112,9 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api', driveDownloadRoutes);
 app.use('/api/local-files', filesRoutes);
 app.use('/api/contact', contactRoutes);
-app.use("/upload", uploadRouter);
+app.use('/api/upload', uploadRouter);
+app.use('/api/webhooks', webhookRoutes);
+app.use('/api/orders', downloadRoutes);
 
 // Lightweight version endpoint for smooth client updates
 const BOOT_TIME = new Date().toISOString();

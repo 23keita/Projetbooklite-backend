@@ -1,33 +1,48 @@
-import express from "express";
-import multer from "multer";
-import cloudinary from "./cloudinary.js"; // Importer la configuration centralisée
+import express from 'express';
+import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Multer + Cloudinary storage
+// Configuration Cloudinary storage
 const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: "products", // dossier pour les produits
-        allowed_formats: ["jpg", "png", "jpeg", "gif"],
-    },
+  cloudinary: cloudinary,
+  params: {
+    folder: 'booklite-products',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'zip', 'mp4', 'avi', 'mov'],
+    resource_type: 'auto', // Permet tous types de fichiers
+  },
 });
 
-const parser = multer({ storage });
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB max
+  },
+});
 
-// POST /upload pour recevoir l'image du frontend
-router.post("/", parser.single("image"), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: "Aucun fichier reçu. L'upload a échoué." });
-        }
-        // req.file.path contient l'URL Cloudinary
-        res.json({ url: req.file.path });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "L'upload a échoué" });
+// Route d'upload sécurisée
+router.post('/', auth, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Aucun fichier fourni' });
     }
+
+    const result = {
+      url: req.file.path,
+      public_id: req.file.filename,
+      format: req.file.format || 'unknown',
+      size: req.file.size,
+      original_name: req.file.originalname,
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error('Erreur upload Cloudinary:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'upload' });
+  }
 });
 
 export default router;

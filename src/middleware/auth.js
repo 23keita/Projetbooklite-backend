@@ -4,7 +4,7 @@ import TokenBlocklist from '../models/TokenBlocklist.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-export const auth = async (req, res, next) => {
+const auth = async (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
 
   if (!token) {
@@ -36,9 +36,12 @@ export const auth = async (req, res, next) => {
   }
 };
 
-export const admin = (req, res, next) => {
+const admin = (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
     return next();
   }
   res.status(403).json({ message: 'Accès refusé, rôle administrateur requis' });
 };
+
+export default auth;
+export { admin };

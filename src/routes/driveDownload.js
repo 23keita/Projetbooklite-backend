@@ -1,6 +1,6 @@
 import express from 'express';
 import googleDriveService from '../services/googleDrive.js';
-import { auth, admin } from '../middleware/auth.js';
+import auth, { admin } from '../middleware/auth.js';
 import DownloadLink from '../models/DownloadLink.js';
 import crypto from 'crypto';
 

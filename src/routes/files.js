@@ -1,11 +1,11 @@
 import { Router } from 'express';
-
-import { verifyToken } from '../middlewares/auth';
+import auth from '../middleware/auth.js';
+import { upload } from '../config/cloudinary.js';
 
 const router = Router();
 
-// Upload fichiers (images, zip, vidéos) vers Cloudinary
-router.post('/', verifyToken, upload.single('file'), async (req, res) => {
+// Upload fichiers vers Cloudinary
+router.post('/', auth, upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: 'Aucun fichier envoyé' });
         res.json({
