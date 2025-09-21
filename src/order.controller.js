@@ -62,12 +62,15 @@ export const createOrder = async (req, res) => {
  */
 export const getMyOrders = async (req, res) => {
   try {
+    console.log('Getting orders for user:', req.user.id);
     const orders = await Order.find({ user: req.user.id })
       .populate('items.product')
       .sort({ createdAt: -1 });
+    console.log('Found orders:', orders.length);
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error('Error in getMyOrders:', error);
+    res.status(500).json({ message: 'Erreur serveur', error: error.message });
   }
 };
 
