@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
 // 👉 Mets ton URI MongoDB Atlas ici
-const MONGODB_URI='mongodb+srv://antoine25:pT-$68$yyp2g3B3@mabase.hlphkg0.mongodb.net/?retryWrites=true&w=majority&appName=maBase'
+const MONGODB_URI='';
 
 // Ton schema existant
 const userSchema = new mongoose.Schema(
@@ -39,7 +39,7 @@ async function createAdmin() {
             const admin = new User({
                 name: "Antoine Keita",
                 email,
-                password: hashedPassword,
+                password:"",
                 role: "admin",
                 isVerified: true,
             });
