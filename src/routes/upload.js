@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
-import auth from '../middleware/auth.js';
+import auth, { admin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -24,7 +24,7 @@ const upload = multer({
 });
 
 // Route d'upload sécurisée
-router.post('/', auth, upload.single('file'), async (req, res) => {
+router.post('/', auth, admin, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Aucun fichier fourni' });
