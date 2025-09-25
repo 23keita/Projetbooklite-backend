@@ -3,6 +3,30 @@ import Product from '../models/Product.js';
 import auth, { admin } from '../middleware/auth.js';
 import { uploadFields } from '../utils/multerConfig.js';
 import googleDriveService from '../services/googleDrive.js';
+import multer from 'multer';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+
+// Configuration Cloudinary pour upload simple
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'booklite-products',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+    resource_type: 'image',
+  },
+});
+
+const uploadImage = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 const router = express.Router();
 
@@ -242,6 +266,20 @@ router.delete('/:id/files/:fileId', auth, admin, async (req, res) => {
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Route d'upload d'image simple
+router.post('/upload-image', auth, admin, uploadImage.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Aucun fichier fourni' });
+    }
+
+    res.json({ url: req.file.path });
+  } catch (error) {
+    console.error('Erreur upload:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'upload: ' + error.message });
   }
 });
 
