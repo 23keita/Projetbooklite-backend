@@ -16,12 +16,12 @@ import adminUserRoutes from './routes/user.routes.js'; // Handles user managemen
 import dashboardRoutes from './routes/dashboard.js'; // Handles dashboard stats
 import driveDownloadRoutes from './routes/driveDownload.js'; // Handles secure file downloads
 import filesRoutes from './routes/files.js'; // Handles local file uploads
-import contactRoutes from './routes/contact.routes.js';
 import clientUserRoutes from './routes/user.js'; // Handles user-specific actions like password change
 import uploadRouter from "./routes/upload.js";
 import webhookRoutes from './routes/webhooks.js';
 import downloadRoutes from './routes/download.js';
 import testAuthRoutes from './routes/test-auth.js';
+import courseOrderRoutes from './routes/courseOrders.js';
 dotenv.config();
 
 // Check for JWT secrets
@@ -112,11 +112,11 @@ app.use('/api/users', clientUserRoutes); // Routes for users to manage their own
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api', driveDownloadRoutes);
 app.use('/api/local-files', filesRoutes);
-app.use('/api/contact', contactRoutes);
 app.use('/api/upload', uploadRouter);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/orders', downloadRoutes);
 app.use('/api/test', testAuthRoutes);
+app.use('/api/course-orders', courseOrderRoutes);
 
 // Lightweight version endpoint for smooth client updates
 const BOOT_TIME = new Date().toISOString();
