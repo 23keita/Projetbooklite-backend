@@ -1,11 +1,11 @@
 import express from 'express';
 import CourseOrder from '../models/CourseOrder.js';
-import { authenticateToken, requireAdmin } from '../middleware/auth.js';
+import auth, { admin } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Créer une nouvelle commande de formation
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const { courseId, courseTitle, amount, currency = 'GNF' } = req.body;
     
@@ -27,7 +27,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Obtenir une commande spécifique
-router.get('/:orderId', authenticateToken, async (req, res) => {
+router.get('/:orderId', auth, async (req, res) => {
   try {
     const order = await CourseOrder.findOne({
       _id: req.params.orderId,
@@ -46,7 +46,7 @@ router.get('/:orderId', authenticateToken, async (req, res) => {
 });
 
 // Obtenir les formations achetées par l'utilisateur
-router.get('/my-courses', authenticateToken, async (req, res) => {
+router.get('/my-courses', auth, async (req, res) => {
   try {
     const orders = await CourseOrder.find({
       user: req.user.id,
@@ -61,7 +61,7 @@ router.get('/my-courses', authenticateToken, async (req, res) => {
 });
 
 // Admin: Obtenir toutes les commandes de formations
-router.get('/admin/all', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/admin/all', auth, admin, async (req, res) => {
   try {
     const orders = await CourseOrder.find({ type: 'course' })
       .populate('user', 'name email')
@@ -75,7 +75,7 @@ router.get('/admin/all', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Admin: Confirmer une commande
-router.patch('/admin/:orderId/confirm', authenticateToken, requireAdmin, async (req, res) => {
+router.patch('/admin/:orderId/confirm', auth, admin, async (req, res) => {
   try {
     const order = await CourseOrder.findByIdAndUpdate(
       req.params.orderId,
@@ -95,7 +95,7 @@ router.patch('/admin/:orderId/confirm', authenticateToken, requireAdmin, async (
 });
 
 // Admin: Annuler une commande
-router.patch('/admin/:orderId/cancel', authenticateToken, requireAdmin, async (req, res) => {
+router.patch('/admin/:orderId/cancel', auth, admin, async (req, res) => {
   try {
     const order = await CourseOrder.findByIdAndUpdate(
       req.params.orderId,
